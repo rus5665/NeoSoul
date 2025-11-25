@@ -3,10 +3,11 @@ import { createStackNavigator } from '@react-navigation/stack';
 import Chapters from '../screens/Chapters';
 import Interview from '../screens/Inteview';
 import { colors } from '../utils/colors';
+import { ROUTES } from './routes';
 
 export type RootStackParamList = {
-  Chapters: undefined;
-  Interview: undefined;
+  [ROUTES.CHAPTERS]: undefined;
+  [ROUTES.INTERVIEW]: { chapterId: string };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -14,7 +15,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 const InterviewStack = () => {
   return (
     <Stack.Navigator
-      initialRouteName="Chapters"
+      initialRouteName={ROUTES.CHAPTERS}
       screenOptions={{
         headerStyle: {
           backgroundColor: colors.white,
@@ -29,16 +30,16 @@ const InterviewStack = () => {
       }}
     >
       <Stack.Screen
-        name="Chapters"
+        name={ROUTES.CHAPTERS}
         component={Chapters}
         options={{
           headerShown: false,
         }}
       />
       <Stack.Screen
-        name="Interview"
+        name={ROUTES.INTERVIEW}
         component={Interview}
-        options={{ title: 'AI Interview' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

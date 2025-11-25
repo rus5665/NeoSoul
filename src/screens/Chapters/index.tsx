@@ -3,6 +3,7 @@ import { View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../../navigation/InterviewStack';
+import { ROUTES } from '../../navigation/routes';
 import { styles } from './styles';
 import DefaultText from '../../components/DefaultText';
 import { TextTypes } from '../../components/DefaultText';
@@ -10,7 +11,7 @@ import ChapterItem, { Chapter } from '../../components/ChapterItem';
 
 type ChaptersScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
-  'Chapters'
+  typeof ROUTES.CHAPTERS
 >;
 
 type Props = {
@@ -29,7 +30,7 @@ const chapters: Chapter[] = [
 
 const Chapters = ({ navigation }: Props) => {
   const handleChapterPress = (chapter: Chapter) => {
-    navigation.navigate('Interview');
+    navigation.navigate(ROUTES.INTERVIEW, { chapterId: chapter.id });
   };
 
   return (
