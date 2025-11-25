@@ -3,5 +3,4 @@ export const ROUTES = {
   INTERVIEW: 'Interview' as const,
 };
 
-export type RouteNames = typeof ROUTES[keyof typeof ROUTES];
-
+export type RouteNames = (typeof ROUTES)[keyof typeof ROUTES];

@@ -64,6 +64,7 @@ const Interview = ({ navigation, route }: Props) => {
   const { chapterId } = route.params;
   const [isRecording, setIsRecording] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState('');
+  const [voiceVolume, setVoiceVolume] = useState(0);
 
   const getInitialQuestion = (id: string): Message => ({
     id: '1',
@@ -81,6 +82,7 @@ const Interview = ({ navigation, route }: Props) => {
     Voice.onSpeechEnd = onSpeechEnd;
     Voice.onSpeechResults = onSpeechResults;
     Voice.onSpeechError = onSpeechError;
+    Voice.onSpeechVolumeChanged = onSpeechVolumeChanged;
 
     return () => {
       Voice.destroy().then(Voice.removeAllListeners);
@@ -89,15 +91,35 @@ const Interview = ({ navigation, route }: Props) => {
 
   const onSpeechStart = () => {
     setIsRecording(true);
+    setVoiceVolume(0);
   };
 
   const onSpeechEnd = () => {
     setIsRecording(false);
+    setVoiceVolume(0);
   };
 
   const onSpeechResults = (event: any) => {
     const text = event.value?.[0] || '';
     setCurrentAnswer(text);
+  };
+
+  const onSpeechVolumeChanged = (event: any) => {
+    // Volume is typically between -2 and 10, normalize it to 0-1
+    const volume = event.value || 0;
+    const normalizedVolume = Math.max(0, Math.min(1, (volume + 2) / 12));
+    
+    // Filter out background noise (threshold at 0.15)
+    const NOISE_THRESHOLD = 0.15;
+    if (normalizedVolume < NOISE_THRESHOLD) {
+      setVoiceVolume(0);
+      return;
+    }
+    
+    // Rescale volume after filtering noise
+    // Map from [NOISE_THRESHOLD, 1] to [0, 1]
+    const filteredVolume = (normalizedVolume - NOISE_THRESHOLD) / (1 - NOISE_THRESHOLD);
+    setVoiceVolume(filteredVolume);
   };
 
   const onSpeechError = (event: any) => {
@@ -245,7 +267,7 @@ const Interview = ({ navigation, route }: Props) => {
       </View>
 
       <View style={styles.waveFormContainer}>
-        <WaveForm isActive={isRecording} />
+        <WaveForm isActive={isRecording} volume={voiceVolume} />
       </View>
 
       <ScrollView
