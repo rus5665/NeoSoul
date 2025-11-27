@@ -9,15 +9,18 @@ import React from 'react';
 import { StatusBar, useColorScheme } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Navigation from './src/navigation';
+import { QueryProvider } from './src/providers/QueryProvider';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <Navigation />
-    </SafeAreaProvider>
+    <QueryProvider>
+      <SafeAreaProvider>
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
+        <Navigation />
+      </SafeAreaProvider>
+    </QueryProvider>
   );
 }
 

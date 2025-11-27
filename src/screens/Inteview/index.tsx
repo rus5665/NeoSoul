@@ -7,6 +7,7 @@ import {
   TextInput,
   Alert,
   PermissionsAndroid,
+  ActivityIndicator,
 } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RouteProp } from '@react-navigation/native';
@@ -18,6 +19,9 @@ import DefaultText, { TextTypes } from '../../components/DefaultText';
 import WaveForm from '../../components/WaveForm';
 import MessageBubble from '../../components/MessageBubble';
 import ButtonAnimation from '../../components/ButtonAnimation';
+import { useInterviewState } from '../../hooks/useInterview';
+import { ChatMessage } from '../../services/api';
+import { colors } from '../../utils/colors';
 
 type InterviewScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -65,17 +69,38 @@ const Interview = ({ navigation, route }: Props) => {
   const [isRecording, setIsRecording] = useState(false);
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [voiceVolume, setVoiceVolume] = useState(0);
-
-  const getInitialQuestion = (id: string): Message => ({
-    id: '1',
-    text: chapterQuestions[id] || 'Tell me about yourself.',
-    isQuestion: true,
-  });
-
-  const [messages, setMessages] = useState<Message[]>([
-    getInitialQuestion(chapterId),
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [isKeyboardMode, setIsKeyboardMode] = useState(false);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+
+  // Используем hooks для работы с API
+  const { initialQuestion, sendAnswer, isLoading } = useInterviewState(chapterId);
+
+  // Загрузить первый вопрос от AI
+  useEffect(() => {
+    if (initialQuestion.data?.question) {
+      const firstQuestion: Message = {
+        id: '1',
+        text: initialQuestion.data.question,
+        isQuestion: true,
+      };
+      setMessages([firstQuestion]);
+      
+      // Добавить в историю чата
+      setChatHistory([{
+        role: 'assistant',
+        content: initialQuestion.data.question,
+      }]);
+    } else if (initialQuestion.error) {
+      // Если ошибка загрузки, использовать fallback
+      const fallbackQuestion: Message = {
+        id: '1',
+        text: chapterQuestions[chapterId] || 'Tell me about yourself.',
+        isQuestion: true,
+      };
+      setMessages([fallbackQuestion]);
+    }
+  }, [initialQuestion.data, initialQuestion.error, chapterId]);
 
   useEffect(() => {
     Voice.onSpeechStart = onSpeechStart;
@@ -203,25 +228,64 @@ const Interview = ({ navigation, route }: Props) => {
     }
   };
 
-  const handleSendAnswer = () => {
-    if (currentAnswer.trim()) {
-      const newMessage: Message = {
+  const handleSendAnswer = async () => {
+    if (!currentAnswer.trim()) return;
+
+    try {
+      // Добавить ответ пользователя в сообщения
+      const userMessage: Message = {
         id: Date.now().toString(),
         text: currentAnswer,
         isQuestion: false,
       };
-      setMessages([...messages, newMessage]);
+      setMessages(prev => [...prev, userMessage]);
+
+      // Обновить историю чата
+      const updatedHistory: ChatMessage[] = [
+        ...chatHistory,
+        {role: 'user', content: currentAnswer},
+      ];
+
+      // Сохранить текст ответа и очистить поле
+      const answerText = currentAnswer;
       setCurrentAnswer('');
 
-      // Simulate next question after a delay
-      setTimeout(() => {
-        const nextQuestion: Message = {
+      // Отправить на сервер и получить следующий вопрос
+      const result = await sendAnswer.mutateAsync({
+        chapterId,
+        messages: updatedHistory,
+        answer: answerText,
+      });
+
+      // Добавить новый вопрос от AI
+      if (result.question) {
+        const aiQuestion: Message = {
           id: (Date.now() + 1).toString(),
-          text: 'What was the most valuable lesson they taught you?',
+          text: result.question,
           isQuestion: true,
         };
-        setMessages(prev => [...prev, nextQuestion]);
-      }, 1000);
+        setMessages(prev => [...prev, aiQuestion]);
+
+        // Обновить историю
+        setChatHistory([
+          ...updatedHistory,
+          {role: 'assistant', content: result.question},
+        ]);
+      }
+
+      // Проверить завершение интервью
+      if (result.completed) {
+        Alert.alert(
+          'Interview Completed',
+          'Thank you for sharing your story!',
+          [{text: 'OK', onPress: () => navigation.goBack()}],
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send answer:', error);
+      Alert.alert('Error', 'Failed to get next question. Please try again.');
+      // Вернуть ответ обратно если ошибка
+      setCurrentAnswer(currentAnswer);
     }
   };
 
@@ -269,6 +333,13 @@ const Interview = ({ navigation, route }: Props) => {
       <View style={styles.waveFormContainer}>
         <WaveForm isActive={isRecording} volume={voiceVolume} />
       </View>
+
+      {isLoading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.blue.highlight} />
+          <DefaultText style={styles.loadingText}>AI is thinking...</DefaultText>
+        </View>
+      )}
 
       <ScrollView
         style={styles.messagesContainer}

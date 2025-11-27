@@ -36,6 +36,16 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.white,
   },
+  loadingContainer: {
+    padding: scale(16),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: scale(8),
+    fontSize: scale(14),
+    color: colors.text.secondary,
+  },
   messagesContainer: {
     flex: 1,
     backgroundColor: colors.white,
